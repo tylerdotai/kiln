@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { prepare, layout } from "@chenglou/pretext";
 
 /* ─── Nav ─────────────────────────────────────────────── */
 function Nav() {
@@ -52,15 +53,155 @@ function Nav() {
   );
 }
 
+/* ─── Pretext hook ─────────────────────────────────── */
+function usePretext(text: string, font: string, maxWidth: number, lineHeight: number) {
+  const [result, setResult] = useState<{ height: number; lineCount: number } | null>(null);
+  useEffect(() => {
+    // Only run on client
+    if (typeof window === "undefined") return;
+    const prepared = prepare(text, font);
+    const measured = layout(prepared, maxWidth, lineHeight);
+    setResult(measured);
+  }, [text, font, maxWidth, lineHeight]);
+  return result;
+}
+
+/* ─── Terminal line ────────────────────────────────── */
+const FONT = "13px JetBrains Mono, Fira Code, Consolas, monospace";
+const LINE_HEIGHT = 20;
+
+interface TerminalLineProps {
+  text: string;
+  color?: string;
+  prefix?: string;
+  delay?: number;
+}
+
+function TerminalLine({ text, color = "#a0a0a0", prefix, delay = 0 }: TerminalLineProps) {
+  const [visible, setVisible] = useState(false);
+  const [typed, setTyped] = useState("");
+  const measured = usePretext(text, FONT, 480, LINE_HEIGHT);
+
+  useEffect(() => {
+    const showTimer = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(showTimer);
+  }, [delay]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let i = 0;
+    const type = () => {
+      if (i <= text.length) {
+        setTyped(text.slice(0, i));
+        i++;
+        setTimeout(type, 22);
+      }
+    };
+    type();
+  }, [visible, text]);
+
+  const height = measured?.height ?? LINE_HEIGHT;
+
+  return (
+    <div
+      style={{
+        height: visible ? height : 0,
+        opacity: visible ? 1 : 0,
+        overflow: "hidden",
+        transition: "height 0.3s ease, opacity 0.3s ease",
+        fontFamily: FONT,
+        fontSize: 13,
+        lineHeight: `${LINE_HEIGHT}px`,
+      }}
+    >
+      <span style={{ color: "#3D8B6E" }}>{prefix}</span>
+      <span style={{ color }}>{typed}</span>
+      {visible && typed.length < text.length && (
+        <span
+          style={{
+            display: "inline-block",
+            width: 8,
+            height: LINE_HEIGHT - 4,
+            background: "#E85D26",
+            marginLeft: 1,
+            verticalAlign: "middle",
+            animation: "blink 0.8s step-end infinite",
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 /* ─── Hero ─────────────────────────────────────────── */
 function Hero() {
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase(1), 800);
+    const t2 = setTimeout(() => setPhase(2), 3500);
+    const t3 = setTimeout(() => setPhase(3), 6000);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
+
   return (
     <section className="min-h-screen flex flex-col items-center justify-center pt-24 pb-16 px-6">
       <div className="w-full max-w-3xl text-center">
-        <div className="inline-block px-4 py-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text-secondary)] mb-8">
-          For Discord and Telegram
+
+        {/* Terminal demo */}
+        <div
+          className="rounded-2xl bg-[#0d0d0d] border border-[#2a2a2a] overflow-hidden mb-10 text-left"
+          style={{ maxWidth: 560, margin: "0 auto 40px" }}
+        >
+          {/* Titlebar */}
+          <div
+            style={{
+              background: "#1a1a1a",
+              borderBottom: "1px solid #2a2a2a",
+              padding: "10px 16px",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#C43D26" }} />
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#C47F17" }} />
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#3D8B6E" }} />
+            <span
+              style={{
+                marginLeft: 8,
+                fontSize: 12,
+                color: "#6B6560",
+                fontFamily: FONT,
+              }}
+            >
+              kiln — your-agent
+            </span>
+          </div>
+
+          {/* Terminal body */}
+          <div style={{ padding: "20px 20px 24px" }}>
+            <TerminalLine text="$ connect discord --token ****" color="#E85D26" delay={200} />
+            <TerminalLine text="Connected to Discord server." color="#3D8B6E" delay={1400} />
+            <TerminalLine text="$ ask --model gpt-4o" color="#E85D26" prefix="" delay={2200} />
+            <TerminalLine
+              text="Your AI agent is live. Ask it anything."
+              color="#a0a0a0"
+              delay={3200}
+            />
+            {phase >= 1 && (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #2a2a2a" }}>
+                <TerminalLine
+                  text="Ready in Discord and Telegram."
+                  color="#3D8B6E"
+                  delay={4400}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Headline */}
         <h1
           className="text-5xl md:text-6xl font-black text-[var(--color-text)] mb-6 leading-tight"
           style={{ fontFamily: "var(--font-display)" }}
@@ -92,6 +233,13 @@ function Hero() {
           No credit card required to start free
         </p>
       </div>
+
+      <style>{`
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+      `}</style>
     </section>
   );
 }
