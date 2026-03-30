@@ -10,10 +10,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
-
-# Install libsql native binding for linux-x64-musl (Alpine) — required for Turso
-RUN npm install @libsql/linux-x64-musl@0.5.29 --legacy-peer-deps --ignore-scripts 2>/dev/null || true
+RUN npm ci --legacy-peer-deps && npm install @libsql/linux-x64-musl@0.5.29 --legacy-peer-deps
 
 # Rebuild the source code when the app changes
 FROM base AS builder
@@ -32,8 +29,17 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Copy the Next.js standalone build
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/ ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy the native SQLite binding for libsql (needed for /data/kiln.db)
+COPY --from=deps /app/node_modules/@libsql/linux-x64-musl/ ./node_modules/@libsql/linux-x64-musl/
+COPY --from=deps /app/node_modules/@neon-rs/load/ ./node_modules/@neon-rs/load/
+COPY --from=deps /app/node_modules/detect-libc/ ./node_modules/detect-libc/
+
+# Pre-create the data directory and DB file
+RUN mkdir -p /data && touch /data/kiln.db && chown -R nextjs:nodejs /data
 
 USER nextjs
 
