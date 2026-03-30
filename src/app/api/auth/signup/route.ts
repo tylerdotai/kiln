@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { initDb } from "@/lib/init-db";
-import { sql } from "drizzle-orm/libsql";
 
 // Ensure tables exist on first request
 let dbInitialized = false;
