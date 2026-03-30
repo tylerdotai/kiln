@@ -12,6 +12,9 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --legacy-peer-deps
 
+# Install libsql native binding for linux-x64-musl (Alpine) — required for Turso
+RUN npm install @libsql/linux-x64-musl@0.5.29 --legacy-peer-deps --ignore-scripts 2>/dev/null || true
+
 # Rebuild the source code when the app changes
 FROM base AS builder
 WORKDIR /app
