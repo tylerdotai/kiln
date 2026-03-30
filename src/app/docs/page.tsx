@@ -1,95 +1,81 @@
 "use client";
-import Link from 'next/link';
+import Link from "next/link";
 
 const docLinks = [
   {
-    href: '/docs/getting-started',
-    title: 'Quick start guide',
-    desc: 'Get KILN running locally in 10 minutes. Clone, configure, fire.',
-    icon: '⚡',
-    tag: 'Start here',
+    href: "/docs/getting-started",
+    title: "Getting started",
+    desc: "How to set up your Discord or Telegram bot and connect it to KILN.",
+    tag: "Start here",
   },
   {
-    href: '/docs/templates',
-    title: 'Template documentation',
-    desc: 'Browse available templates, understand what each one includes, and how to customize them.',
-    icon: '📦',
-    tag: 'Templates',
+    href: "/docs/discord",
+    title: "Discord setup",
+    desc: "Step-by-step guide to creating your Discord bot and getting your bot token.",
+    tag: "Channels",
   },
   {
-    href: '/docs/api-keys',
-    title: 'API key configuration',
-    desc: 'How to get API keys for Resend, Polar, Trigger.dev, and PostHog — and where to put them.',
-    icon: '🔑',
-    tag: 'Setup',
+    href: "/docs/telegram",
+    title: "Telegram setup",
+    desc: "How to create a Telegram bot using BotFather and get your token.",
+    tag: "Channels",
   },
   {
-    href: '/docs/deployment',
-    title: 'Deployment guide',
-    desc: 'Deploy to Railway, Fly.io, or your own server. Custom domains, environment variables, and SSL.',
-    icon: '🚀',
-    tag: 'Production',
+    href: "/docs/api-keys",
+    title: "Connecting your AI",
+    desc: "How to use your OpenAI, Anthropic, or Google account with your agent.",
+    tag: "Setup",
   },
   {
-    href: '/docs/troubleshooting',
-    title: 'Troubleshooting FAQ',
-    desc: 'Common errors, edge cases, and how to debug when things go sideways.',
-    icon: '🔧',
-    tag: 'Help',
+    href: "/docs/troubleshooting",
+    title: "Troubleshooting",
+    desc: "Common issues and how to fix them. Or, just message us.",
+    tag: "Help",
   },
 ];
 
-function DocCard({
-  href,
-  title,
-  desc,
-  icon,
-  tag,
-}: (typeof docLinks)[0]) {
+function DocCard({ href, title, desc, tag }: (typeof docLinks)[0]) {
   return (
     <Link
       href={href}
       style={{
-        display: 'block',
-        background: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '28px 32px',
-        textDecoration: 'none',
-        transition: 'all 0.15s ease',
+        display: "block",
+        background: "var(--color-surface)",
+        border: "1px solid var(--color-border)",
+        borderRadius: "var(--radius-lg)",
+        padding: "24px 28px",
+        textDecoration: "none",
+        transition: "all 0.15s ease",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = 'var(--color-accent)';
-        e.currentTarget.style.transform = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+        e.currentTarget.style.borderColor = "var(--color-accent)";
+        e.currentTarget.style.transform = "translateY(-2px)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'var(--color-border)';
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = 'none';
+        e.currentTarget.style.borderColor = "var(--color-border)";
+        e.currentTarget.style.transform = "translateY(0)";
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-        <span style={{ fontSize: 28, lineHeight: 1 }}>{icon}</span>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
             <h3
               style={{
-                fontFamily: 'var(--font-headline)',
-                fontSize: 18,
+                fontFamily: "var(--font-headline)",
+                fontSize: 17,
                 fontWeight: 600,
-                color: 'var(--color-text)',
+                color: "var(--color-text)",
               }}
             >
               {title}
             </h3>
             <span className="tag">{tag}</span>
           </div>
-          <p style={{ fontSize: 14, color: 'var(--color-secondary)', lineHeight: 1.6 }}>
+          <p style={{ fontSize: 14, color: "var(--color-secondary)", lineHeight: 1.6 }}>
             {desc}
           </p>
         </div>
-        <span style={{ color: 'var(--color-accent)', fontSize: 18, marginTop: 4 }}>→</span>
+        <span style={{ color: "var(--color-accent)", fontSize: 18, marginTop: 2 }}>&#x2192;</span>
       </div>
     </Link>
   );
@@ -97,76 +83,70 @@ function DocCard({
 
 export default function DocsPage() {
   return (
-    <div>
+    <div className="min-h-screen pt-24">
       {/* Header */}
       <section
         style={{
-          padding: '64px 24px 48px',
-          maxWidth: 800,
-          margin: '0 auto',
-          textAlign: 'center',
+          padding: "48px 24px 40px",
+          maxWidth: 700,
+          margin: "0 auto",
+          textAlign: "center",
         }}
       >
         <h1
           style={{
-            fontFamily: 'var(--font-headline)',
-            fontSize: 'clamp(2rem, 5vw, 3.5rem)',
+            fontFamily: "var(--font-headline)",
+            fontSize: "clamp(2rem, 5vw, 3rem)",
             fontWeight: 700,
-            marginBottom: 16,
+            marginBottom: 12,
           }}
         >
-          Documentation
+          Help & Setup Guides
         </h1>
         <p
           style={{
-            fontSize: 18,
-            color: 'var(--color-secondary)',
+            fontSize: 17,
+            color: "var(--color-secondary)",
             lineHeight: 1.6,
           }}
         >
-          Everything you need to build with KILN. From zero to deployed in one place.
+          Everything you need to get your AI agent up and running.
         </p>
       </section>
 
       {/* Doc Cards */}
-      <section
-        style={{
-          maxWidth: 800,
-          margin: '0 auto',
-          padding: '0 24px 80px',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <section style={{ maxWidth: 700, margin: "0 auto", padding: "0 24px 80px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {docLinks.map((link) => (
             <DocCard key={link.href} {...link} />
           ))}
         </div>
       </section>
 
-      {/* Help block */}
+      {/* Still stuck */}
       <section
         style={{
-          borderTop: '1px solid var(--color-border)',
-          padding: '48px 24px',
-          textAlign: 'center',
-          background: 'var(--color-surface)',
+          borderTop: "1px solid var(--color-border)",
+          padding: "48px 24px",
+          textAlign: "center",
+          background: "var(--color-surface)",
         }}
       >
         <h2
           style={{
-            fontFamily: 'var(--font-headline)',
-            fontSize: '1.5rem',
+            fontFamily: "var(--font-headline)",
+            fontSize: "1.4rem",
             fontWeight: 600,
             marginBottom: 12,
           }}
         >
-          Can't find what you need?
+          Still have questions?
         </h2>
-        <p style={{ color: 'var(--color-secondary)', marginBottom: 24, fontSize: 15 }}>
-          We're two builders who actually use this thing. Send a message and we'll help you figure it out.
+        <p style={{ color: "var(--color-secondary)", marginBottom: 20, fontSize: 15 }}>
+          Message us and we'll help you get set up.
         </p>
         <Link href="/contact" className="btn btn--secondary">
-          Talk to a human →
+          Talk to us
         </Link>
       </section>
     </div>
