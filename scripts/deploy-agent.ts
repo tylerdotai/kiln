@@ -39,6 +39,7 @@ interface AgentConfig {
   provider: "anthropic" | "openai" | "openrouter" | "minimax";
   channelToken?: string;
   allowedIds?: string;
+  dryRun?: boolean;
 }
 
 function run(cmd: string, args: string[]): Promise<void> {
@@ -140,10 +141,14 @@ export async function deployAgent(cfg: AgentConfig): Promise<string> {
   });
 
   // 5. Create volume
-  try {
-    await fly(["volumes", "create", "clawd_data", "--region", cfg.region, "--size", "10", "--app", cfg.appName, "-y"]);
-  } catch {
-    console.log("[deploy] Volume may already exist, continuing...");
+  if (!cfg.dryRun) {
+    try {
+      await fly(["volumes", "create", "clawd_data", "--region", cfg.region, "--size", "10", "--app", cfg.appName, "-y"]);
+    } catch {
+      console.log("[deploy] Volume may already exist, continuing...");
+    }
+  } else {
+    console.log(`[DRY-RUN] Would create volume clawd_data in region ${cfg.region}`);
   }
 
   // 6. Set secrets
@@ -164,24 +169,29 @@ export async function deployAgent(cfg: AgentConfig): Promise<string> {
     secrets.SLACK_BOT_TOKEN = cfg.channelToken;
   }
 
-  for (const [key, value] of Object.entries(secrets)) {
-    try {
-      await fly([
-        "secrets",
-        "set",
-        `${key}=${value}`,
-        "--app",
-        cfg.appName,
-        "--stage",
-      ]);
-    } catch (e) {
-      console.warn(`[deploy] Could not set secret ${key}:`, e);
+  if (!cfg.dryRun) {
+    for (const [key, value] of Object.entries(secrets)) {
+      try {
+        await fly([
+          "secrets",
+          "set",
+          `${key}=${value}`,
+          "--app",
+          cfg.appName,
+          "--stage",
+        ]);
+      } catch (e) {
+        console.warn(`[deploy] Could not set secret ${key}:`, e);
+      }
     }
-  }
 
-  // 7. Run fly deploy
-  process.chdir(deployDir);
-  await fly(["deploy", "--config", "fly.toml", "--app", cfg.appName, "--remote-only"]);
+    // 7. Run fly deploy
+    process.chdir(deployDir);
+    await fly(["deploy", "--config", "fly.toml", "--app", cfg.appName, "--remote-only"]);
+  } else {
+    console.log("[DRY-RUN] Would set secrets:", Object.keys(secrets).join(", "));
+    console.log(`[DRY-RUN] Would run: fly deploy --config fly.toml --app ${cfg.appName} --remote-only`);
+  }
 
   return `https://${cfg.appName}.fly.dev`;
 }
@@ -205,10 +215,11 @@ function randomHex(bytes: number): string {
     provider: (get("--provider") as AgentConfig["provider"]) ?? "anthropic",
     channelToken: get("--channel-token"),
     allowedIds: get("--allowed-ids"),
+    dryRun: args.includes("--dry-run"),
   };
 
   if (!cfg.appName || !cfg.apiKey) {
-    console.error("Usage: tsx deploy-agent.ts --app <name> --api-key <key> [--channel discord] [--region iad]");
+    console.error("Usage: tsx deploy-agent.ts --app <name> --api-key <key> [--channel discord] [--region iad] [--dry-run]");
     process.exit(1);
   }
 
