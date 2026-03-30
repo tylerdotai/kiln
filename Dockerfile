@@ -1,134 +1,42 @@
-FROM debian:bookworm-slim
+# KILN — Next.js on Fly.io
+FROM node:22-alpine AS base
 
-ENV DEBIAN_FRONTEND=noninteractive
+ARG NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
 
-# System deps + Chromium + browser automation deps
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    gnupg \
-    git \
-    jq \
-    sudo \
-    openssh-client \
-    chromium \
-    fonts-liberation \
-    libnss3 \
-    libatk-bridge2.0-0 \
-    libdrm2 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    libgbm1 \
-    libasound2 \
-    libpangocairo-1.0-0 \
-    libgtk-3-0 \
-    rsync \
-    unzip \
-    g++ \
-    make \
-    && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json* ./
+RUN npm ci
 
-# GitHub CLI
-RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-        > /usr/share/keyrings/githubcli-archive-keyring.gpg \
-    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-        > /etc/apt/sources.list.d/github-cli.list \
-    && apt-get update && apt-get install -y --no-install-recommends gh \
-    && rm -rf /var/lib/apt/lists/*
+# Rebuild the source code when the app changes
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 
-# Node.js 22.x
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/*
+RUN npm run build
 
-# Tailscale
-RUN curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg \
-        > /usr/share/keyrings/tailscale-archive-keyring.gpg \
-    && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list \
-        > /etc/apt/sources.list.d/tailscale.list \
-    && apt-get update && apt-get install -y --no-install-recommends tailscale \
-    && rm -rf /var/lib/apt/lists/*
+# Production image, copy all the files and start up
+FROM base AS runner
+WORKDIR /app
 
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV CHROMIUM_PATH=/usr/bin/chromium
+ENV NODE_ENV=production
 
-# OpenClaw + QMD memory backend
-# NODE_LLAMA_CPP_GPU=false: Fly VMs have no GPU; forces CPU backend for node-llama-cpp.
-# chmod: node-llama-cpp needs write access for CPU backend build at runtime (runs as agent user).
-# CACHEBUST forces Docker to re-run npm install when a new version is desired.
-# Set via: flyctl deploy --build-arg CACHEBUST=$(date +%s)
-# Or in CI: --build-arg CACHEBUST=${{ github.sha }}
-ARG CACHEBUST=1
-ENV NODE_LLAMA_CPP_GPU=false
-WORKDIR /tmp
-RUN npm install -g openclaw@latest @tobilu/qmd@latest \
-    && chmod -R a+w /usr/lib/node_modules/@tobilu/qmd/node_modules/node-llama-cpp/ \
-    && echo "QMD $(qmd --version 2>/dev/null || echo 'version unknown') installed" \
-    && echo '{"backend":"qmd","qmd":{"command":"qmd","includeDefaultMemory":true}}' > /tmp/qmd-test.json \
-    && mkdir -p qmd-warmup && echo "# test" > qmd-warmup/test.md \
-    && if ! qmd update 2>&1; then \
-        echo "WARNING: qmd update failed during image build; runtime warmup will retry."; \
-    fi \
-    && if ! qmd embed 2>&1; then \
-        echo "WARNING: qmd embed failed during image build; runtime warmup will retry."; \
-    fi \
-    && echo "QMD precompile step completed (check warnings above for fallback-to-runtime cases)"
-WORKDIR /
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# uv (Python version manager + package manager)
-# Installs uv system-wide; Python 3.12 is installed per-user at runtime (entrypoint)
-# since uv python installs go to ~/.local which needs the persistent volume.
-RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# ACP harnesses (Claude Code + Codex CLIs for agent coding sessions)
-#
-# Additional harnesses:
-# - Pi is a lightweight coding-agent CLI we use as a baseline harness for model comparisons.
-# - summarize + ffmpeg + yt-dlp support URL/media summarization workflows.
-RUN npm install -g @anthropic-ai/claude-code@latest @openai/codex@latest \
-    && npm install -g @mariozechner/pi-coding-agent@latest \
-    && npm install -g @steipete/summarize@latest \
-    && apt-get update && apt-get install -y --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
-        -o /usr/local/bin/yt-dlp \
-    && chmod +x /usr/local/bin/yt-dlp
+USER nextjs
 
-# Codex wrapper:
-# 1. Unset OPENAI_API_KEY so Codex uses OAuth (codex login --device-auth)
-# 2. --dangerously-bypass-approvals-and-sandbox: Fly's container runtime does not
-#    load Landlock LSM, causing Codex's built-in sandbox to panic on every command.
-#    The VM itself is the sandbox boundary.
-# IMPORTANT: exec /usr/bin/codex (npm symlink) so optional platform modules resolve correctly.
-RUN printf '#!/bin/bash\nunset OPENAI_API_KEY\nexec /usr/bin/codex --dangerously-bypass-approvals-and-sandbox "$@"\n' \
-        > /usr/local/bin/codex \
-    && chmod +x /usr/local/bin/codex
+EXPOSE 3000
 
-# Non-root user with sudo
-RUN groupadd -r agent && useradd -r -g agent -m -s /bin/bash agent \
-    && echo "agent ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/agent \
-    # Fix acpx plugin ownership — OpenClaw blocks world-writable extensions dirs
-    && (chown -R agent:agent \
-        /usr/lib/node_modules/openclaw/extensions/acpx/ \
-        /usr/lib/node_modules/openclaw/dist/extensions/acpx/ \
-        2>/dev/null || true)
+ENV PORT=3000
 
-# Bundle config, workspace, and cron defaults
-COPY config/openclaw.json /opt/openclaw/openclaw.json
-COPY config/workspace/ /opt/openclaw/workspace/
-COPY config/cron/ /opt/openclaw/cron/
-
-# Scripts
-COPY remote/entrypoint.sh /usr/local/bin/entrypoint.sh
-COPY remote/vm-setup.sh /usr/local/bin/vm-setup.sh
-COPY remote/state-sync.sh /usr/local/bin/state-sync.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/vm-setup.sh /usr/local/bin/state-sync.sh
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD su - agent -c 'source /data/.env.secrets 2>/dev/null && openclaw health' || exit 1
-
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["node", "server.js"]

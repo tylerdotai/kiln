@@ -71,18 +71,12 @@ export async function POST(req: NextRequest) {
 
   try {
     switch (eventType) {
-      case "payment.created": {
+      case "checkout.paid": {
         const checkoutId = d.id;
-        console.log(`[Polar] Payment created: ${checkoutId}`);
-        break;
-      }
-
-      case "payment.succeeded": {
         const customerId = d.customer_id;
-        const checkoutId = d.checkout_id;
-        const amount = parseInt(d.amount ?? "0") / 100;
+        console.log(`[Polar] Checkout paid: ${checkoutId}`);
 
-        // Find user by polar customer id
+        // Find user by polar customer id or email
         const [user] = await db
           .select()
           .from(users)
@@ -93,7 +87,6 @@ export async function POST(req: NextRequest) {
           // Trigger deploy
           const deploy = await triggerDeploy(user.id, checkoutId);
 
-          // Update deployment status
           if (deploy.deploymentId) {
             await db
               .update(deployments)
@@ -105,7 +98,6 @@ export async function POST(req: NextRequest) {
               .where(eq(deployments.id, deploy.deploymentId));
           }
 
-          // Send email
           const agentUrl = deploy.url ?? `https://${deploy.flyAppName ?? "your-agent"}.fly.dev`;
           await sendEmail({
             to: user.email,
@@ -132,8 +124,22 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      case "payment.failed": {
+      case "subscription.active": {
         const customerId = d.customer_id;
+        console.log(`[Polar] Subscription active: ${customerId}`);
+        const [user] = await db.select().from(users).where(eq(users.polarCustomerId, customerId)).limit(1);
+        if (user) {
+          const deploy = await triggerDeploy(user.id, `sub_${d.id}`);
+          if (deploy.deploymentId) {
+            await db.update(deployments).set({ status: "deployed", updatedAt: new Date() }).where(eq(deployments.id, deploy.deploymentId));
+          }
+        }
+        break;
+      }
+
+      case "subscription.past_due": {
+        const customerId = d.customer_id;
+        console.log(`[Polar] Subscription past due: ${customerId}`);
 
         const [user] = await db
           .select()
