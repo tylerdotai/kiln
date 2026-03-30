@@ -1,8 +1,16 @@
-# KILN — Fire your SaaS.
+# KILN — Deploy your OpenClaw agent to Fly.io.
 
-**Pick a template. Configure your keys. Ship a deployed, monetized business in 30 minutes — not 30 hours.**
+**Pick your channel. Add your API keys. Fire. Your OpenClaw agent is live in 30 minutes.**
 
-[KILN](https://kiln.build) is a SaaS launcher built on Next.js 15, Fly.io, Better Auth, Resend, Polar.sh, and Trigger.dev. Each "fire" spins up a customer's own deployed Fly.io app with their configured API keys.
+KILN is a deployment service for [OpenClaw](https://github.com/openclaw/openclaw) agents. Each deployment spins up a customer's own always-on OpenClaw instance on Fly.io — connected to Discord, Telegram, Slack, or web.
+
+---
+
+## What KILN Does
+
+1. **You pick a channel** — Discord, Telegram, Slack, or web
+2. **You add your API keys** — OpenAI, Anthropic, Google Gemini, or MiniMax. Plus your channel tokens.
+3. **KILN fires the kiln** — We deploy your OpenClaw agent to Fly.io, wire everything, and hand you a live URL.
 
 ---
 
@@ -10,12 +18,11 @@
 
 | Layer | Tool |
 |-------|------|
-| Web | Next.js 15 (App Router) |
-| Deploy | Fly.io (each customer gets their own app) |
+| Agent gateway | [OpenClaw](https://github.com/openclaw/openclaw) |
+| Deploy target | Fly.io (persistent, always-on) |
 | Auth | Better Auth + Drizzle ORM |
 | Email | Resend + React Email |
 | Payments | Polar.sh |
-| Jobs | Trigger.dev |
 | Styling | Tailwind CSS 3 |
 | Fonts | Fraunces + Instrument Sans + JetBrains Mono |
 
@@ -28,7 +35,7 @@ git clone https://github.com/tylerdotai/kiln.git
 cd kiln
 npm install
 cp .env.example .env.local
-# Fill in .env.local with your API keys
+# Fill in .env.local
 npm run dev
 ```
 
@@ -39,20 +46,13 @@ Open [http://localhost:3000](http://localhost:3000)
 ## Deploy to Fly.io
 
 ```bash
-# Authenticate
 fly auth login
-
-# Launch the app
 fly launch
-
-# Set secrets
 fly secrets set BETTER_AUTH_SECRET="$(openssl rand -base64 32)"
 fly secrets set RESEND_API_KEY=re_xxx
 fly secrets set POLAR_ACCESS_TOKEN=polar_live_xxx
 fly secrets set POLAR_WEBHOOK_SECRET=whsec_xxx
 fly secrets set DATABASE_URL=libsql://xxx.turso.io
-
-# Deploy
 fly deploy
 ```
 
@@ -76,16 +76,17 @@ FLY_ORG=                 # usually "personal"
 TRIGGER_SECRET_KEY=       # td_live_xxx from trigger.dev
 ```
 
-See `.env.example` for the complete list including Polar.sh price IDs.
-
 ---
 
-## How It Works
+## Pricing
 
-1. **Pick a template** — SaaS Starter, API Only, Agent Panel, Blog + CMS, Marketplace, or Dashboard
-2. **Configure your keys** — Add Resend, Polar.sh, Trigger.dev, and Fly.io credentials
-3. **Fire the kiln** — KILN spins up your own Fly.io app with all keys wired
-4. **Your SaaS is live** — Custom subdomain on Fly.io, auth working, billing connected
+| Plan | Price | Includes |
+|------|-------|----------|
+| Starter | Free | 1 agent, Discord, GPT-3.5, 100 msg/day |
+| Pro | $15/mo | 1 agent, all channels, all models, unlimited |
+| Team | $49/mo | 5 agents, all channels, Slack workspace |
+
+Plus your own API key costs — you pay your LLM provider directly.
 
 ---
 
@@ -97,38 +98,32 @@ kiln/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── page.tsx           # Landing page (Kiln Fire hero)
 │   │   ├── pricing/           # 3-tier pricing
-│   │   ├── how-it-works/      # 4-step visual
+│   │   ├── how-it-works/      # Channel → Keys → Fire → Live
 │   │   ├── checkout/           # Template + key config → Polar
 │   │   ├── dashboard/         # User deployments, settings, billing
 │   │   ├── auth/              # Sign in / sign up
 │   │   ├── docs/              # Docs hub + dynamic slugs
 │   │   ├── about/             # About page
 │   │   ├── contact/           # Contact form
-│   │   ├── legal/             # Privacy + terms
 │   │   └── api/              # API routes
-│   │       ├── auth/         # Better Auth handlers
-│   │       ├── checkout/      # Polar checkout creation
+│   │       ├── auth/
+│   │       ├── checkout/
 │   │       ├── deploy/        # Fly.io app creation
-│   │       ├── webhooks/      # Polar + Resend webhooks
-│   │       └── subscriptions/ # Subscription management
+│   │       └── webhooks/
 │   ├── lib/
-│   │   ├── auth.ts           # Better Auth + Drizzle adapter
-│   │   ├── db/schema.ts      # Drizzle schema (users, sessions, deployments, api_keys)
-│   │   ├── email.ts         # Resend client + send helpers
-│   │   ├── polar.ts         # Polar.sh SDK client
+│   │   ├── auth.ts           # Better Auth + Drizzle
+│   │   ├── db/schema.ts      # Schema: users, deployments, api_keys
+│   │   ├── email.ts         # Resend + send helpers
+│   │   ├── polar.ts         # Polar.sh SDK
 │   │   ├── fly.ts           # Fly.io API client
-│   │   ├── env.ts           # Type-safe env access
-│   │   └── cost-tracking.ts  # Usage limits + billing helpers
+│   │   ├── env.ts           # Type-safe env
+│   │   └── cost-tracking.ts
 │   └── emails/               # React Email templates
-│       ├── WelcomeEmail.tsx
-│       ├── PaymentFailedEmail.tsx
-│       ├── DeploymentLiveEmail.tsx
-│       └── ReceiptEmail.tsx
-├── triggers/                   # Trigger.dev task definitions (stub)
+├── triggers/                   # Trigger.dev tasks
 ├── Dockerfile                 # Multi-stage Fly.io build
 ├── fly.toml                   # Fly.io app config
-├── tailwind.config.js         # Tailwind CSS 3 + custom brand tokens
-├── .env.example               # All env vars documented
+├── tailwind.config.js         # Tailwind CSS 3 + brand tokens
+├── .env.example              # All env vars
 └── DEPLOY.md                 # Fly.io deployment guide
 ```
 
@@ -156,7 +151,7 @@ npm test             # Run tests (Vitest)
 
 ## Status
 
-KILN is in active development. The core landing page, checkout flow, auth, and Fly.io deployment pipeline are wired. Some pages (ops dashboard, full billing portal) are stubbed pending real API integration.
+KILN is in active development. Core landing page, checkout flow, auth, and Fly.io deployment pipeline are wired. Some pages (ops dashboard, full billing portal) are stubbed.
 
 ---
 
