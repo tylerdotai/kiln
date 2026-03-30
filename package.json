@@ -19,6 +19,7 @@
     "@tailwindcss/postcss": "^4.2.2",
     "better-auth": "^1.2.4",
     "drizzle-orm": "^0.36.4",
+    "@libsql/linux-x64-musl": "^0.5.29",
     "libsql": "^0.4.6",
     "next": "^15.0.0",
     "react": "^19.0.0",

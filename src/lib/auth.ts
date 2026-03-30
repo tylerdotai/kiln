@@ -32,13 +32,12 @@ export async function getCurrentUser(req?: Request) {
       .get("cookie")
       ?.split(";")
       .find((c) => c.trim().startsWith("better-auth.session_token"))
-      ?.split("=")[1] ??
-    (await cookies()).get("session")?.value;
+      ?.split("=")[1]
+      ?? (await cookies()).get("session")?.value;
 
   if (!sessionToken) return null;
 
   try {
-    // Use raw select — drizzle-orm libsql relational API may not be fully available
     const allSessions = await db
       .select()
       .from(sessions)
