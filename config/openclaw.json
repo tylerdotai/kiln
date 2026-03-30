@@ -1,0 +1,293 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.3.8",
+    "lastTouchedAt": "2026-03-11T00:05:25.811Z"
+  },
+  "wizard": {
+    "lastRunAt": "2026-02-27T00:42:20.330Z",
+    "lastRunVersion": "2026.2.26",
+    "lastRunCommand": "doctor",
+    "lastRunMode": "local"
+  },
+  "browser": {
+    "enabled": true,
+    "executablePath": "/usr/bin/chromium",
+    "headless": true,
+    "noSandbox": true,
+    "attachOnly": true,
+    "defaultProfile": "openclaw",
+    "profiles": {
+      "openclaw": {
+        "cdpPort": 18800,
+        "color": "#FF4500"
+      }
+    }
+  },
+  "acp": {
+    "enabled": true,
+    "dispatch": {
+      "enabled": true
+    },
+    "backend": "acpx",
+    "defaultAgent": "codex",
+    "allowedAgents": ["codex", "claude", "pi"]
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "anthropic/claude-opus-4-6",
+        "fallbacks": [
+          "openai/gpt-5.3-codex",
+          "openai/gpt-5.2-codex",
+          "openrouter/openai/gpt-5.2-codex",
+          "anthropic/claude-sonnet-4-5"
+        ]
+      },
+      "models": {
+        "anthropic/claude-sonnet-4-5": {
+          "alias": "Sonnet"
+        },
+        "anthropic/claude-opus-4-6": {
+          "alias": "Opus"
+        },
+        "anthropic/claude-haiku-4-5": {
+          "alias": "Haiku"
+        },
+        "openrouter/google/gemini-2.5-pro": {
+          "alias": "Gemini"
+        },
+        "openrouter/deepseek/deepseek-v3.2": {
+          "alias": "DeepSeek"
+        },
+        "openrouter/qwen/qwen3-235b-a22b": {
+          "alias": "Qwen3"
+        },
+        "openrouter/mistralai/mistral-large-2512": {
+          "alias": "MistralLarge"
+        },
+        "openai/gpt-5.3-codex": {
+          "alias": "Codex"
+        },
+        "openai/gpt-5.2-codex": {
+          "alias": "Codex-5.2"
+        },
+        "openrouter/openai/gpt-5.2-codex": {
+          "alias": "Codex-OR-5.2"
+        }
+      },
+      "contextTokens": 200000,
+      "memorySearch": {
+        "extraPaths": ["journal", "patterns", "docs", "research"],
+        "query": {
+          "hybrid": {
+            "enabled": true,
+            "vectorWeight": 0.7,
+            "textWeight": 0.3,
+            "mmr": {
+              "enabled": true,
+              "lambda": 0.7
+            },
+            "temporalDecay": {
+              "enabled": true,
+              "halfLifeDays": 30
+            }
+          }
+        }
+      },
+      "contextPruning": {
+        "mode": "cache-ttl",
+        "ttl": "5m",
+        "keepLastAssistants": 3,
+        "tools": {
+          "allow": ["exec", "read", "web_fetch", "browser", "process"],
+          "deny": ["memory_search", "memory_get"]
+        },
+        "softTrim": {
+          "maxChars": 4000,
+          "headChars": 1500,
+          "tailChars": 1500
+        },
+        "hardClear": {
+          "enabled": true,
+          "placeholder": "[Old tool result cleared]"
+        }
+      },
+      "compaction": {
+        "mode": "default",
+        "reserveTokensFloor": 30000,
+        "memoryFlush": {
+          "enabled": true,
+          "softThresholdTokens": 4000
+        }
+      },
+      "heartbeat": {
+        "every": "0m"
+      },
+      "maxConcurrent": 4,
+      "subagents": {
+        "maxConcurrent": 8,
+        "runTimeoutSeconds": 3600
+      },
+      "sandbox": {
+        "mode": "off"
+      }
+    }
+  },
+  "tools": {
+    "media": {
+      "audio": {
+        "enabled": true,
+        "models": [
+          {
+            "provider": "openai",
+            "model": "gpt-4o-mini-transcribe",
+            "capabilities": ["audio"]
+          }
+        ],
+        "echoTranscript": true
+      }
+    },
+    "sessions": {
+      "visibility": "agent"
+    }
+  },
+  "messages": {
+    "ackReactionScope": "group-mentions",
+    "tts": {
+      "auto": "off",
+      "provider": "openai"
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "session": {
+    "reset": {
+      "mode": "idle",
+      "idleMinutes": 180
+    },
+    "resetByType": {
+      "group": {
+        "mode": "daily",
+        "atHour": 9
+      },
+      "thread": {
+        "mode": "daily",
+        "atHour": 9
+      }
+    },
+    "maintenance": {
+      "mode": "enforce",
+      "pruneAfter": "30d",
+      "maxEntries": 500,
+      "maxDiskBytes": "2gb"
+    }
+  },
+  "hooks": {
+    "internal": {
+      "enabled": true,
+      "entries": {
+        "session-memory": {
+          "enabled": true
+        },
+        "boot-md": {
+          "enabled": true
+        }
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "dmPolicy": "allowlist",
+      "groups": {
+        "-1003782901451": {
+          "requireMention": false,
+          "groupPolicy": "open"
+        }
+      },
+      "allowFrom": [732702245],
+      "groupPolicy": "allowlist",
+      "streaming": "partial"
+    },
+    "slack": {
+      "mode": "socket",
+      "webhookPath": "/slack/events",
+      "enabled": true,
+      "userTokenReadOnly": true,
+      "groupPolicy": "open",
+      "streaming": "partial",
+      "nativeStreaming": false
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "loopback",
+    "auth": {
+      "mode": "token"
+    },
+    "channelHealthCheckMinutes": 120
+  },
+  "memory": {
+    "backend": "qmd",
+    "qmd": {
+      "command": "qmd",
+      "includeDefaultMemory": true,
+      "paths": [
+        {
+          "path": "journal",
+          "name": "journal",
+          "pattern": "**/*.md"
+        },
+        {
+          "path": "patterns",
+          "name": "patterns",
+          "pattern": "**/*.md"
+        },
+        {
+          "path": "docs",
+          "name": "docs",
+          "pattern": "**/*.md"
+        },
+        {
+          "path": "conversations",
+          "name": "conversations",
+          "pattern": "**/*.md"
+        },
+        {
+          "path": "research",
+          "name": "research",
+          "pattern": "**/*.md"
+        }
+      ],
+      "update": {
+        "interval": "5m",
+        "onBoot": true
+      },
+      "limits": {
+        "maxResults": 8,
+        "timeoutMs": 10000
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "telegram": {
+        "enabled": true
+      },
+      "slack": {
+        "enabled": true
+      },
+      "acpx": {
+        "enabled": true,
+        "config": {
+          "permissionMode": "approve-all"
+        }
+      }
+    }
+  }
+}
