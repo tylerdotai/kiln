@@ -1,116 +1,51 @@
 import Link from "next/link";
 
-interface SuccessPageProps {
-  searchParams: Promise<{ subdomain?: string; checkout_id?: string }>;
-}
-
-export default async function SuccessPage({ searchParams }: SuccessPageProps) {
-  const params = await searchParams;
-  const subdomain = params.subdomain || "your-app";
-  const deploymentUrl = `https://${subdomain}.kiln.build`;
-
+export default function SuccessPage() {
   return (
-    <main className="min-h-screen bg-background flex items-center justify-center px-6">
-      <div className="max-w-lg w-full text-center animate-fade-in">
-        {/* Green checkmark */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="w-24 h-24 rounded-full bg-green-50 border-4 border-green-200 flex items-center justify-center">
-            <svg
-              className="w-12 h-12 text-green-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
+    <main className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center px-6">
+      <div className="max-w-lg text-center">
+        {/* Check icon */}
+        <div className="w-16 h-16 bg-[var(--color-success)]/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <path d="M6 16l7 7L26 9" stroke="#3D8B6E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
 
-        <h1 className="font-serif text-5xl font-bold text-text mb-4">
-          Your SaaS is live.
+        <h1
+          className="text-4xl font-black text-[var(--color-text)] mb-4"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          Payment confirmed!
         </h1>
-
-        <p className="text-secondary text-lg mb-2">
-          Payment confirmed. Your deployment is being built.
+        <p className="text-[var(--color-text-secondary)] text-lg mb-8 leading-relaxed">
+          Your KILN agent is being deployed. Head to the onboarding wizard to configure your channel and fire the kiln.
         </p>
 
-        <p className="text-secondary mb-10">
-          Usually takes{" "}
-          <span className="text-text font-medium">2–5 minutes</span>. You'll
-          receive an email when it's ready.
-        </p>
-
-        {/* Deployment URL */}
-        <div className="bg-surface border border-border rounded-2xl p-6 mb-8">
-          <p className="text-xs text-secondary uppercase tracking-wider mb-2">
-            Your deployment
-          </p>
-          <a
-            href={deploymentUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono text-accent text-lg hover:underline break-all"
-          >
-            {deploymentUrl}
-          </a>
-        </div>
-
-        {/* Next steps */}
-        <div className="bg-surface border border-border rounded-2xl p-6 mb-8 text-left">
-          <h2 className="font-serif text-lg font-semibold text-text mb-4">
-            What happens next
-          </h2>
-          <ol className="space-y-4">
+        <div className="bg-[var(--color-surface)] rounded-2xl p-6 border border-[var(--color-border)] mb-8 text-left">
+          <h2 className="font-bold text-[var(--color-text)] mb-4">What happens next:</h2>
+          <ol className="space-y-3">
             {[
-              {
-                step: 1,
-                title: "We're building your SaaS",
-                desc: "Your template is being customized with your API keys and subdomain.",
-              },
-              {
-                step: 2,
-                title: "Check your email",
-                desc: "Credentials and setup guide will arrive in your inbox shortly.",
-              },
-              {
-                step: 3,
-                title: "Customize and launch",
-                desc: "Connect your domain, add your branding, and go live.",
-              },
-            ].map(({ step, title, desc }) => (
-              <li key={step} className="flex gap-4">
-                <div className="w-7 h-7 rounded-full bg-accent/10 text-accent font-bold text-sm flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {step}
-                </div>
-                <div>
-                  <div className="font-medium text-text text-sm">{title}</div>
-                  <div className="text-secondary text-sm">{desc}</div>
-                </div>
+              { n: "1", text: "Configure your channel (Discord, Telegram, or Slack)" },
+              { n: "2", text: "Add your API keys — we verify them before deploying" },
+              { n: "3", text: "Click Fire — your agent goes live on Fly.io" },
+              { n: "4", text: "You'll get a live URL and setup wizard link in your email" },
+            ].map((item) => (
+              <li key={item.n} className="flex items-start gap-3 text-sm text-[var(--color-text-secondary)]">
+                <span className="w-5 h-5 rounded-full bg-[var(--color-accent)] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                  {item.n}
+                </span>
+                {item.text}
               </li>
             ))}
           </ol>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Link
-            href="/dashboard"
-            className="flex-1 bg-accent text-white py-3 rounded-xl font-semibold text-base hover:opacity-90 transition-opacity"
-          >
-            Go to dashboard →
-          </Link>
-          <Link
-            href="/"
-            className="flex-1 bg-surface border border-border text-text py-3 rounded-xl font-semibold text-base hover:bg-surface/80 transition-colors"
-          >
-            Back to home
-          </Link>
-        </div>
+        <Link
+          href="/onboarding"
+          className="inline-block px-8 py-4 bg-[var(--color-accent)] text-white font-bold text-lg rounded-full hover:bg-[var(--color-accent-hover)] transition-all hover:scale-[1.02] active:scale-[0.98]"
+        >
+          Set up your agent →
+        </Link>
       </div>
     </main>
   );

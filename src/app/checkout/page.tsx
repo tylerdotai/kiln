@@ -1,462 +1,221 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const TEMPLATES = [
+const PLANS = [
   {
-    id: "saas-starter",
-    name: "SaaS Starter",
-    description: "Full-stack SaaS with auth, dashboard, billing, and API. Perfect for B2B tools.",
-    badge: "Most popular",
-    price: "$29/mo",
-    features: ["Multi-tenant architecture", "Stripe billing", "User auth", "Admin panel", "Email via Resend"],
-    gradient: "from-orange-400 to-rose-500",
-    preview: "bg-gradient-to-br from-orange-100 to-rose-100",
+    id: "starter",
+    name: "Starter",
+    price: 0,
+    priceLabel: "Free",
+    desc: "For trying it out.",
+    features: ["1 agent", "Discord", "GPT-3.5", "100 messages/day"],
+    cta: "Start free",
   },
   {
-    id: "saas-pro",
-    name: "SaaS Pro",
-    description: "Everything in Starter plus AI integrations, analytics, and priority support.",
-    badge: "Best value",
-    price: "$79/mo",
-    features: ["Everything in SaaS Starter", "OpenAI / Claude integration", "PostHog analytics", "Priority support", "Custom domain"],
-    gradient: "from-violet-500 to-purple-600",
-    preview: "bg-gradient-to-br from-violet-100 to-purple-100",
+    id: "pro",
+    name: "Pro",
+    price: 15,
+    priceLabel: "$15/mo",
+    desc: "For daily use.",
+    features: ["1 agent", "All channels", "All models", "Unlimited messages"],
+    cta: "Go Pro",
+    highlight: true,
   },
   {
-    id: "api-only",
-    name: "API Only",
-    description: "Headless API with auth, rate limiting, and webhook support. Ship your own frontend.",
-    badge: undefined,
-    price: "$19/mo",
-    features: ["REST + GraphQL API", "Auth middleware", "Rate limiting", "Webhook engine", "API key management"],
-    gradient: "from-cyan-500 to-blue-600",
-    preview: "bg-gradient-to-br from-cyan-100 to-blue-100",
-  },
-  {
-    id: "single-tenant",
-    name: "Single Tenant",
-    description: "Isolated instance per customer. Best for enterprise compliance and data isolation.",
-    badge: undefined,
-    price: "$149/mo",
-    features: ["Isolated per customer", "Dedicated database", "SOC 2 ready", "Audit logs", "Custom SLA"],
-    gradient: "from-emerald-500 to-teal-600",
-    preview: "bg-gradient-to-br from-emerald-100 to-teal-100",
-  },
-  {
-    id: "agency",
-    name: "Agency",
-    description: "White-label solution for agencies building multiple client SaaS products.",
-    badge: undefined,
-    price: "$299/mo",
-    features: ["Multi-project management", "White-label ready", "Client billing separation", "5 sub-accounts", "Priority everything"],
-    gradient: "from-amber-500 to-orange-600",
-    preview: "bg-gradient-to-br from-amber-100 to-orange-100",
-  },
-  {
-    id: "microsaas",
-    name: "Micro SaaS",
-    description: "Simple single-tenant SaaS for solo founders. Auth, payments, and a landing page.",
-    badge: "For solo founders",
-    price: "$9/mo",
-    features: ["Landing page included", "Gumroad or Lemonsqueezy", "Simple auth", "Basic analytics", "1 deployment"],
-    gradient: "from-pink-400 to-rose-500",
-    preview: "bg-gradient-to-br from-pink-100 to-rose-100",
+    id: "team",
+    name: "Team",
+    price: 49,
+    priceLabel: "$49/mo",
+    desc: "For teams.",
+    features: ["5 agents", "All channels", "All models", "Priority support"],
+    cta: "Contact sales",
   },
 ];
 
-type Step = "template" | "configure" | "payment";
-
 export default function CheckoutPage() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("template");
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [step, setStep] = useState<"plan" | "configure" | "done">("plan");
+  const [plan, setPlan] = useState<string>("pro");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  // Form state
-  const [subdomain, setSubdomain] = useState("");
-  const [email, setEmail] = useState("");
-  const [resendApiKey, setResendApiKey] = useState("");
-  const [polarAccessToken, setPolarAccessToken] = useState("");
-  const [triggerApiKey, setTriggerApiKey] = useState("");
-  const [posthogApiKey, setPosthogApiKey] = useState("");
-  const [githubToken, setGithubToken] = useState("");
-
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  const template = TEMPLATES.find((t) => t.id === selectedTemplate);
-
-  function validateStep2() {
-    const errors: Record<string, string> = {};
-
-    if (!subdomain || subdomain.length < 2) {
-      errors.subdomain = "Subdomain must be at least 2 characters";
-    } else if (!/^[a-z0-9-]+$/.test(subdomain)) {
-      errors.subdomain = "Only lowercase letters, numbers, and hyphens";
-    }
-
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = "Valid email is required";
-    }
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+  async function handleStartFree() {
+    setLoading(true);
+    // Free plan — skip payment, go straight to onboarding
+    router.push("/onboarding");
   }
 
-  async function handleFire(e: FormEvent) {
-    e.preventDefault();
-    if (!validateStep2()) return;
-
+  async function handleCheckout() {
     setLoading(true);
-    setError("");
-
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          templateId: selectedTemplate,
-          subdomain,
-          email,
-          resendApiKey: resendApiKey || undefined,
-          polarAccessToken: polarAccessToken || undefined,
-          triggerApiKey: triggerApiKey || undefined,
-          posthogApiKey: posthogApiKey || undefined,
-          githubToken: githubToken || undefined,
-        }),
+        body: JSON.stringify({ plan }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Failed to create checkout");
-        return;
+      if (data.url) {
+        // Redirect to Polar checkout
+        window.location.href = data.url;
+      } else {
+        // Fallback: go to onboarding (dev mode)
+        router.push("/onboarding");
       }
-
-      // Redirect to Polar checkout
-      window.location.href = data.url;
     } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+      router.push("/onboarding");
     }
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      {/* Nav */}
-      <nav className="border-b border-border px-6 py-4 flex items-center justify-between">
+    <main className="min-h-screen bg-[var(--color-bg)]">
+      {/* Minimal nav */}
+      <nav className="border-b border-[var(--color-border)] px-6 h-16 flex items-center">
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-2xl">🔥</span>
-          <span className="font-serif text-xl font-semibold text-text">KILN</span>
+          <div className="w-7 h-7 bg-[var(--color-accent)] rounded-lg flex items-center justify-center">
+            <span className="text-white text-sm font-bold" style={{ fontFamily: "var(--font-display)" }}>K</span>
+          </div>
+          <span className="font-bold text-[var(--color-text)]" style={{ fontFamily: "var(--font-display)" }}>KILN</span>
         </Link>
-        <div className="flex items-center gap-2 text-sm text-secondary">
-          {step !== "template" && (
-            <button
-              onClick={() => setStep(step === "payment" ? "configure" : "template")}
-              className="hover:text-text transition-colors flex items-center gap-1"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back
-            </button>
-          )}
-          <span>Step {step === "template" ? 1 : step === "configure" ? 2 : 3} of 3</span>
-        </div>
       </nav>
 
-      <div className="max-w-5xl mx-auto px-6 py-12">
-        {/* Step 1: Template Selection */}
-        {step === "template" && (
-          <div className="animate-fade-in">
-            <h1 className="font-serif text-4xl font-bold text-text mb-2">
-              Choose your fuel.
+      <div className="max-w-2xl mx-auto px-6 py-12">
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 mb-10">
+          {["Plan", "Configure", "Done"].map((label, i) => {
+            const stages = ["plan", "configure", "done"];
+            const current = stages.indexOf(step);
+            return (
+              <div key={label} className="flex items-center">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    i < current
+                      ? "bg-[var(--color-success)] text-white"
+                      : i === current
+                      ? "bg-[var(--color-accent)] text-white"
+                      : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]"
+                  }`}
+                >
+                  {i < current ? "✓" : i + 1}
+                </div>
+                <span className={`ml-2 text-sm ${i <= current ? "text-[var(--color-text)]" : "text-[var(--color-text-secondary)]"}`}>
+                  {label}
+                </span>
+                {i < 2 && (
+                  <div className={`w-12 h-px mx-4 ${i < current ? "bg-[var(--color-success)]" : "bg-[var(--color-border)]"}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {step === "plan" && (
+          <div>
+            <h1 className="text-3xl font-black text-[var(--color-text)] mb-2 text-center" style={{ fontFamily: "var(--font-display)" }}>
+              Deploy your OpenClaw agent
             </h1>
-            <p className="text-secondary mb-10">
-              Pick a template to start. You can configure your API keys on the next step.
+            <p className="text-[var(--color-text-secondary)] text-center mb-10">
+              Choose a plan. Upgrade later — no lock-in.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {TEMPLATES.map((t, i) => (
+            <div className="grid gap-4 mb-8">
+              {PLANS.map((p) => (
                 <button
-                  key={t.id}
-                  onClick={() => {
-                    setSelectedTemplate(t.id);
-                    setStep("configure");
-                  }}
-                  className="group text-left bg-surface border border-border rounded-2xl p-5 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/10 transition-all duration-200 animate-fade-in"
-                  style={{ animationDelay: `${i * 60}ms` }}
+                  key={p.id}
+                  onClick={() => setPlan(p.id)}
+                  className={`p-6 rounded-xl border-2 text-left transition-all ${
+                    plan === p.id
+                      ? "border-[var(--color-accent)] bg-[var(--color-accent)]/5"
+                      : "border-[var(--color-border)] hover:border-[var(--color-accent)]"
+                  }`}
                 >
-                  {t.badge && (
-                    <span className="inline-block bg-accent text-white text-xs font-semibold px-2 py-0.5 rounded-full mb-3">
-                      {t.badge}
-                    </span>
-                  )}
-                  <div className={`w-full h-28 rounded-xl ${t.preview} mb-4 flex items-center justify-center`}>
-                    <span className="text-4xl opacity-60">
-                      {t.id === "saas-starter" && "🧱"}
-                      {t.id === "saas-pro" && "🚀"}
-                      {t.id === "api-only" && "⚡"}
-                      {t.id === "single-tenant" && "🏛️"}
-                      {t.id === "agency" && "🏗️"}
-                      {t.id === "microsaas" && "🌱"}
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <span className="font-bold text-[var(--color-text)]">{p.name}</span>
+                      {p.highlight && (
+                        <span className="ml-2 text-xs bg-[var(--color-accent)]/10 text-[var(--color-accent)] px-2 py-0.5 rounded-full font-semibold">
+                          Popular
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xl font-black text-[var(--color-text)]" style={{ fontFamily: "var(--font-display)" }}>
+                      {p.priceLabel}
                     </span>
                   </div>
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-serif text-lg font-semibold text-text">
-                      {t.name}
-                    </h3>
-                    <span className="text-sm font-mono font-semibold text-accent">
-                      {t.price}
-                    </span>
-                  </div>
-                  <p className="text-sm text-secondary leading-relaxed mb-3">
-                    {t.description}
-                  </p>
+                  <p className="text-sm text-[var(--color-text-secondary)] mb-3">{p.desc}</p>
                   <ul className="space-y-1">
-                    {t.features.slice(0, 3).map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-xs text-secondary">
-                        <span className="w-1 h-1 rounded-full bg-accent" />
-                        {f}
+                    {p.features.map((f) => (
+                      <li key={f} className="flex items-center gap-2 text-sm text-[var(--color-text)]">
+                        <span className="text-[var(--color-success)]">✓</span> {f}
                       </li>
                     ))}
                   </ul>
                 </button>
               ))}
             </div>
+
+            {plan === "starter" ? (
+              <button
+                onClick={handleStartFree}
+                disabled={loading}
+                className="w-full py-4 rounded-full font-bold text-lg bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-50 transition-colors"
+              >
+                {loading ? "Setting up..." : "Start free →"}
+              </button>
+            ) : (
+              <button
+                onClick={() => { setStep("configure"); }}
+                className="w-full py-4 rounded-full font-bold text-lg bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"
+              >
+                Continue with {PLANS.find((p) => p.id === plan)?.priceLabel} →
+              </button>
+            )}
           </div>
         )}
 
-        {/* Step 2: Configuration */}
-        {step === "configure" && template && (
-          <div className="animate-fade-in">
-            <h1 className="font-serif text-4xl font-bold text-text mb-2">
-              Configure your build.
+        {step === "configure" && (
+          <div>
+            <h1 className="text-3xl font-black text-[var(--color-text)] mb-2 text-center" style={{ fontFamily: "var(--font-display)" }}>
+              Almost ready
             </h1>
-            <p className="text-secondary mb-10">
-              Set up your subdomain and connect your API keys. All keys are encrypted at rest.
+            <p className="text-[var(--color-text-secondary)] text-center mb-10">
+              After payment, you'll configure your agent and deploy it.
             </p>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Form */}
-              <div className="lg:col-span-2 space-y-6">
-                <form onSubmit={handleFire} id="configure-form">
-                  {/* Subdomain */}
-                  <div className="bg-surface border border-border rounded-2xl p-6 mb-5">
-                    <h3 className="font-semibold text-text mb-1">Deployment</h3>
-                    <p className="text-sm text-secondary mb-4">
-                      Your SaaS will be live at{" "}
-                      <span className="font-mono text-accent">{subdomain || "your-name"}.kiln.build</span>
-                    </p>
-
-                    <div>
-                      <label className="block text-sm font-medium text-text mb-2">
-                        Subdomain
-                      </label>
-                      <div className="flex">
-                        <input
-                          type="text"
-                          value={subdomain}
-                          onChange={(e) => {
-                            setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
-                            setFieldErrors((prev) => ({ ...prev, subdomain: "" }));
-                          }}
-                          placeholder="tyler-kiln"
-                          className={`flex-1 bg-background border rounded-l-xl px-4 py-3 font-mono text-text placeholder:text-secondary/50 focus:outline-none focus:border-accent transition-colors ${
-                            fieldErrors.subdomain ? "border-red-400" : "border-border"
-                          }`}
-                        />
-                        <span className="inline-flex items-center rounded-r-xl border border-l-0 border-border bg-background px-4 text-sm text-secondary">
-                          .kiln.build
-                        </span>
-                      </div>
-                      {fieldErrors.subdomain && (
-                        <p className="text-xs text-red-500 mt-1">{fieldErrors.subdomain}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Email */}
-                  <div className="bg-surface border border-border rounded-2xl p-6 mb-5">
-                    <h3 className="font-semibold text-text mb-1">Account</h3>
-                    <p className="text-sm text-secondary mb-4">
-                      We'll send your deployment credentials here.
-                    </p>
-                    <div>
-                      <label className="block text-sm font-medium text-text mb-2">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value);
-                          setFieldErrors((prev) => ({ ...prev, email: "" }));
-                        }}
-                        placeholder="tyler@flumeusa.com"
-                        className={`w-full bg-background border rounded-xl px-4 py-3 text-text placeholder:text-secondary/50 focus:outline-none focus:border-accent transition-colors ${
-                          fieldErrors.email ? "border-red-400" : "border-border"
-                        }`}
-                      />
-                      {fieldErrors.email && (
-                        <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* API Keys */}
-                  <div className="bg-surface border border-border rounded-2xl p-6 mb-5">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold text-text">API Keys</h3>
-                      <span className="text-xs text-secondary bg-background border border-border px-2 py-0.5 rounded-full">
-                        Optional
-                      </span>
-                    </div>
-                    <p className="text-sm text-secondary mb-4">
-                      Connect your services. All values are AES-256-GCM encrypted before storage.
-                    </p>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-medium text-secondary mb-1.5 uppercase tracking-wide">
-                          Resend API Key
-                        </label>
-                        <input
-                          type="password"
-                          value={resendApiKey}
-                          onChange={(e) => setResendApiKey(e.target.value)}
-                          placeholder="re_xxxxxxxxxxxx"
-                          className="w-full bg-background border border-border rounded-xl px-4 py-3 font-mono text-sm text-text placeholder:text-secondary/40 focus:outline-none focus:border-accent transition-colors"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-secondary mb-1.5 uppercase tracking-wide">
-                          Polar Access Token
-                        </label>
-                        <input
-                          type="password"
-                          value={polarAccessToken}
-                          onChange={(e) => setPolarAccessToken(e.target.value)}
-                          placeholder="pol_xxxxxxxxxxxx"
-                          className="w-full bg-background border border-border rounded-xl px-4 py-3 font-mono text-sm text-text placeholder:text-secondary/40 focus:outline-none focus:border-accent transition-colors"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-secondary mb-1.5 uppercase tracking-wide">
-                          Trigger API Key
-                        </label>
-                        <input
-                          type="password"
-                          value={triggerApiKey}
-                          onChange={(e) => setTriggerApiKey(e.target.value)}
-                          placeholder="trig_xxxxxxxxxxxx"
-                          className="w-full bg-background border border-border rounded-xl px-4 py-3 font-mono text-sm text-text placeholder:text-secondary/40 focus:outline-none focus:border-accent transition-colors"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-secondary mb-1.5 uppercase tracking-wide">
-                          PostHog API Key
-                        </label>
-                        <input
-                          type="password"
-                          value={posthogApiKey}
-                          onChange={(e) => setPosthogApiKey(e.target.value)}
-                          placeholder="phc_xxxxxxxxxxxx"
-                          className="w-full bg-background border border-border rounded-xl px-4 py-3 font-mono text-sm text-text placeholder:text-secondary/40 focus:outline-none focus:border-accent transition-colors"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-secondary mb-1.5 uppercase tracking-wide">
-                          GitHub Personal Access Token
-                        </label>
-                        <input
-                          type="password"
-                          value={githubToken}
-                          onChange={(e) => setGithubToken(e.target.value)}
-                          placeholder="ghp_xxxxxxxxxxxx"
-                          className="w-full bg-background border border-border rounded-xl px-4 py-3 font-mono text-sm text-text placeholder:text-secondary/40 focus:outline-none focus:border-accent transition-colors"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 mb-5">
-                      {error}
-                    </div>
-                  )}
-                </form>
-              </div>
-
-              {/* Summary sidebar */}
-              <div className="space-y-5">
-                <div className="bg-surface border border-border rounded-2xl p-6 sticky top-8">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-lg">🔥</span>
-                    <span className="font-serif font-semibold text-text">
-                      {template.name}
+            <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)] mb-8">
+              <h3 className="font-bold text-[var(--color-text)] mb-4">What happens next:</h3>
+              <ol className="space-y-3">
+                {[
+                  "You'll be redirected to Polar.sh to complete payment",
+                  "After payment, you'll set up your channel (Discord/Telegram/Slack)",
+                  "Add your API keys (we verify them before deploying)",
+                  "KILN fires the kiln — your agent goes live on Fly.io",
+                  "You'll get an email with your agent URL and setup wizard link",
+                ].map((step, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm text-[var(--color-text-secondary)]">
+                    <span className="w-5 h-5 rounded-full bg-[var(--color-accent)] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {i + 1}
                     </span>
-                  </div>
-
-                  <div className="space-y-3 mb-6 pb-6 border-b border-border">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-secondary">Plan</span>
-                      <span className="font-mono text-text">{template.price}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-secondary">Subdomain</span>
-                      <span className="font-mono text-text text-accent">
-                        {subdomain || "—"}.kiln.build
-                      </span>
-                    </div>
-                  </div>
-
-                  <ul className="space-y-2 mb-6">
-                    {template.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-xs text-secondary">
-                        <svg className="w-4 h-4 text-accent flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button
-                    type="submit"
-                    form="configure-form"
-                    disabled={loading}
-                    className="w-full bg-accent text-white py-4 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2 animate-pulse-glow"
-                  >
-                    {loading ? (
-                      <>
-                        <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Firing up...
-                      </>
-                    ) : (
-                      <>
-                        🔥 Fire
-                      </>
-                    )}
-                  </button>
-
-                  <p className="text-xs text-secondary text-center mt-3">
-                    Powered by Polar. Cancel anytime.
-                  </p>
-                </div>
-              </div>
+                    {step}
+                  </li>
+                ))}
+              </ol>
             </div>
+
+            <button
+              onClick={handleCheckout}
+              disabled={loading}
+              className="w-full py-4 rounded-full font-bold text-lg bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] disabled:opacity-50 transition-colors mb-4"
+            >
+              {loading ? "Redirecting..." : `Pay ${PLANS.find((p) => p.id === plan)?.priceLabel} →`}
+            </button>
+            <button
+              onClick={() => setStep("plan")}
+              className="w-full py-3 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text)]"
+            >
+              ← Back to plan selection
+            </button>
           </div>
         )}
       </div>
