@@ -1,0 +1,61 @@
+app = "kiln"
+primary_region = "iad"
+
+# ─── Build ────────────────────────────────────────────────────────────────────
+[build]
+
+[build.args]
+NEXT_PUBLIC_APP_URL = "https://kiln.build"
+NEXT_PUBLIC_POLAR_PUBLISHABLE_KEY = "polar_live_placeholder"
+
+# ─── HTTP Service ─────────────────────────────────────────────────────────────
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop = true
+  auto_start = true
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+# ─── Health Check ─────────────────────────────────────────────────────────────
+[checks]
+  [checks.status]
+    port = 3000
+    path = "/"
+
+# ─── VM ──────────────────────────────────────────────────────────────────────
+[vm]
+  size = "shared-cpu-2x"
+  memory = "4gb"
+  image = "detached"
+
+# ─── Volumes ─────────────────────────────────────────────────────────────────
+[mounts]
+  source = "kiln_data"
+  destination = "/data"
+
+# ─── Domains ─────────────────────────────────────────────────────────────────
+[[vm]]
+  image = "detached"
+
+# ─── Secrets (set via `fly secrets set`) ────────────────────────────────────
+# BETTER_AUTH_SECRET
+# BETTER_AUTH_URL
+# DATABASE_URL
+# EMAIL_DOMAIN
+# FLY_API_TOKEN
+# FLY_ORG
+# NEXT_PUBLIC_POLAR_PUBLISHABLE_KEY
+# POLAR_ACCESS_TOKEN
+# POLAR_PRICE_PRO_ANNUAL
+# POLAR_PRICE_PRO_MONTHLY
+# POLAR_PRICE_STARTER_ANNUAL
+# POLAR_PRICE_STARTER_MONTHLY
+# POLAR_PRICE_TEAM_ANNUAL
+# POLAR_PRICE_TEAM_MONTHLY
+# POLAR_WEBHOOK_SECRET
+# RESEND_API_KEY
+# TRIGGER_SECRET_KEY

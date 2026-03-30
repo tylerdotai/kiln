@@ -1,0 +1,111 @@
+// This is your Prisma schema file for KILN
+// Learn about it: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+model User {
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  name                  String?
+  tier                  String    @default("starter")
+  polarCustomerId       String?   @unique
+  subscriptionStatus    String?
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean   @default(false)
+  metadata              Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  usageRecords        UsageRecord[]
+  deployments         Deployment[]
+  subscriptionEvents  SubscriptionEvent[]
+  paymentRecords      PaymentRecord[]
+  aiRequestLogs       AiRequestLog[]
+}
+
+model UsageRecord {
+  id                           String   @id @default(cuid())
+  userId                       String
+  user                         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodStart                  DateTime
+  periodEnd                    DateTime
+  deploymentsThisMonth         Int      @default(0)
+  emailsSentThisMonth          Int      @default(0)
+  webhookInvocationsThisMonth Int      @default(0)
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  @@unique([userId, periodStart])
+  @@index([periodStart])
+}
+
+model Deployment {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateId  String?
+  template    Template? @relation(fields: [templateId], references: [id])
+  status      String    @default("deployed")
+  deployedAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([templateId])
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  deployments Deployment[]
+  createdAt   DateTime @default(now())
+}
+
+model SubscriptionEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType String
+  priceId   String
+  tier      String
+  status    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model PaymentRecord {
+  id         String   @id @default(cuid())
+  customerId String
+  user       User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  amount     Int
+  currency   String   @default("usd")
+  status     String
+  createdAt  DateTime @default(now())
+
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+model AiRequestLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  model     String
+  tokens    Int?
+  cost      Int?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
